@@ -1,4 +1,5 @@
 #include "BeaconMessage.h"
+#include "Post.h"
 #include "message.h"
 
 configuration BlindAppC {

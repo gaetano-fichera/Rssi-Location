@@ -9,6 +9,6 @@ typedef nx_struct Pos_t{
 	nx_uint16_t coordinate_x;
 	nx_uint16_t coordinate_y;
 
-} RssiMsg;
+} Pos_t;
 
 #endif //POST_H__

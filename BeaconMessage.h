@@ -7,9 +7,9 @@ enum {
 
 typedef nx_struct Beacon_msg{
 	nx_uint16_t anchor_id;
-	nx_int16_t rssi;
 	nx_uint16_t coordinate_x;
 	nx_uint16_t coordinate_y;
+	nx_uint16_t beacon_period;
 } Beacon_msg;
 
 #endif //BEACONMESSAGE_H__

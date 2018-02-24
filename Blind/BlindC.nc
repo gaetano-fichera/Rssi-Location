@@ -1,5 +1,6 @@
 #include "ApplicationDefinitions.h"
-#include "BeaconMessage.h"  
+#include "BeaconMessage.h"
+#include "Post.h"
 
 module BlindC {
   uses interface Intercept as BeaconMsgIntercept;
@@ -7,6 +8,8 @@ module BlindC {
   uses interface Leds;
 
 } implementation {
+
+  Pos_t pos_archors[MAX_ANCHOR];
 
   uint16_t getRssi(message_t *msg);
   
@@ -20,5 +23,12 @@ module BlindC {
 
   uint16_t getRssi(message_t *msg){
     return (uint16_t) call CC2420Packet.getRssi(msg);
+  }
+
+  task void updatePosAnchors(Beacon_msg beacon_msg){
+    int i;
+    for(i = 0; i < MAX_ANCHOR; i++){
+      
+    }
   }
 }

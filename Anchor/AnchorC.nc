@@ -29,6 +29,7 @@ module AnchorC {
 		beaconMsg->anchor_id = ANCHOR_ID;
 		beaconMsg->coordinate_x = COORDINATE_X;
 		beaconMsg->coordinate_y = COORDINATE_Y;
+		beaconMsg->beacon_period = SEND_INTERVAL_MS;
 
 		call BeaconMsgSend.send(AM_BROADCAST_ADDR, &msg, sizeof(Beacon_msg));
 	}
