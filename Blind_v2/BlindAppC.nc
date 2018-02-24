@@ -1,23 +1,21 @@
 #include "BeaconMessage.h"
 
-configuration AnchorAppC {
+configuration BlindAppC {
 } implementation {
-	components MainC, ActiveMessageC, LedsC;
-	components new AMReceiverC
-	components new AMSenderC(AM_RSSIMSG) as BeaconMsgSender;
-	components CC2420ActiveMessageC;
-
+	components MainC, LedsC;
+	components ActiveMessageC;
+	components CC2420PacketC;
+	components new AMSenderC(AM_BEACON) as BeaconMsgSender;
+	components new AMReceiverC(AM_BEACON) as BeaconMsgReceiver;
+	components new TimerMilliC() as Timer0;
 	components BlindC as App;
 
-	components ActiveMessageC, MainC, LedsC;
-	components new AMSenderC(AM_RSSIMSG) as BeaconMsgSender;
-	components new TimerMilliC() as SendTimer;
-	components AnchorC as App;
-
 	App.Boot -> MainC;
-	App.SendTimer -> SendTimer;
+  	App.BeaconPacket -> CC2420PacketC;
+  	App.AMControl -> ActiveMessageC;
+	App.BeaconMsgReceive -> BeaconMsgReceiver;
 	App.BeaconMsgSend -> BeaconMsgSender;
-	App.RadioControl -> ActiveMessageC;
-	App.Packet -> ActiveMessageC;
+	App.CalcPosTimer -> Timer0;
 	App.Leds -> LedsC;
+
 }

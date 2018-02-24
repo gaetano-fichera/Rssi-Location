@@ -2,7 +2,7 @@
 #define BEACONMESSAGE_H__
 
 enum {
-	AM_RSSIMSG = 10
+	AM_BEACON = 10
 };
 
 typedef nx_struct Beacon_msg{
