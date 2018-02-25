@@ -3,7 +3,7 @@
 configuration AnchorAppC {
 } implementation {
 	components ActiveMessageC, MainC, LedsC;
-	components new AMSenderC(AM_BEACON) as BeaconMsgSender;
+	components new AMSenderC(AM_BEACON_MSG) as BeaconMsgSender;
 	components new TimerMilliC() as SendTimer;
 	components AnchorC as App;
 

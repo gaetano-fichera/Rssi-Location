@@ -1,13 +1,13 @@
 <tos_image>
   <ident>
-    <hostname>flexlm</hostname>
+    <uidhash>A6A53567L</uidhash>
     <appname>AnchorAppC</appname>
-    <deluge_support>no</deluge_support>
     <userhash>16B5B0FEL</userhash>
-    <uidhash>2A73A504L</uidhash>
+    <timestamp>5A91D8BDL</timestamp>
+    <hostname>flexlm</hostname>
+    <deluge_support>no</deluge_support>
     <username>cerbero</username>
     <platform>telosb</platform>
-    <timestamp>5A919803L</timestamp>
   </ident>
   <image format="ihex">
 :10400000314000391542200175F335D0085A3F4040
