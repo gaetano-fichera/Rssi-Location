@@ -10,14 +10,22 @@ public class BlindMain implements MessageListener {
   
   public BlindMain(MoteIF moteIF) {
     this.moteIF = moteIF;
-    this.moteIF.registerListener(new BeaconMsg(), this);
+    this.moteIF.registerListener(new Pos(), this);
   }
 
   public void messageReceived(int to, Message message) {
-    BeaconMsg msg = (BeaconMsg)message;
+    Pos msg = (Pos) message;
     int source = message.getSerialPacket().get_header_src();
     
-    System.out.println("Received beacon " + msg.toString());
+    /*
+    System.out.println("Received beacon dal nodo: " + msg.get_anchor_id() + "\n" +
+      "X: " + msg.get_coordinate_x() + "\n" +
+      "Y: " + msg.get_coordinate_y() + "\n" +
+      "Beacon Period: " + msg.get_beacon_period());
+    */
+    System.out.println("Posizione Blind \n" +
+      "X: " + msg.get_coordinate_x() + "\n" +
+      "Y: " + msg.get_coordinate_y());
   }
   
   private static void usage() {

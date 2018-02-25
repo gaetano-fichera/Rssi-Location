@@ -2,7 +2,7 @@
 #define POST_H__
 
 enum {
-	AM_POS_MSG = 9
+	AM_POS_T = 9
 };
 
 typedef nx_struct Pos_t{

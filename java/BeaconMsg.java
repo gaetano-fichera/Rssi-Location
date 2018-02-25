@@ -103,16 +103,16 @@ public class BeaconMsg extends net.tinyos.message.Message {
 
     /////////////////////////////////////////////////////////
     // Accessor methods for field: anchor_id
-    //   Field type: int, unsigned
+    //   Field type: int, signed
     //   Offset (bits): 0
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
     /**
-     * Return whether the field 'anchor_id' is signed (false).
+     * Return whether the field 'anchor_id' is signed (true).
      */
     public static boolean isSigned_anchor_id() {
-        return false;
+        return true;
     }
 
     /**
@@ -166,16 +166,16 @@ public class BeaconMsg extends net.tinyos.message.Message {
 
     /////////////////////////////////////////////////////////
     // Accessor methods for field: coordinate_x
-    //   Field type: int, unsigned
+    //   Field type: int, signed
     //   Offset (bits): 16
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
     /**
-     * Return whether the field 'coordinate_x' is signed (false).
+     * Return whether the field 'coordinate_x' is signed (true).
      */
     public static boolean isSigned_coordinate_x() {
-        return false;
+        return true;
     }
 
     /**
@@ -229,16 +229,16 @@ public class BeaconMsg extends net.tinyos.message.Message {
 
     /////////////////////////////////////////////////////////
     // Accessor methods for field: coordinate_y
-    //   Field type: int, unsigned
+    //   Field type: int, signed
     //   Offset (bits): 32
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
     /**
-     * Return whether the field 'coordinate_y' is signed (false).
+     * Return whether the field 'coordinate_y' is signed (true).
      */
     public static boolean isSigned_coordinate_y() {
-        return false;
+        return true;
     }
 
     /**
@@ -292,16 +292,16 @@ public class BeaconMsg extends net.tinyos.message.Message {
 
     /////////////////////////////////////////////////////////
     // Accessor methods for field: beacon_period
-    //   Field type: int, unsigned
+    //   Field type: short, signed
     //   Offset (bits): 48
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
     /**
-     * Return whether the field 'beacon_period' is signed (false).
+     * Return whether the field 'beacon_period' is signed (true).
      */
     public static boolean isSigned_beacon_period() {
-        return false;
+        return true;
     }
 
     /**
@@ -326,17 +326,17 @@ public class BeaconMsg extends net.tinyos.message.Message {
     }
 
     /**
-     * Return the value (as a int) of the field 'beacon_period'
+     * Return the value (as a short) of the field 'beacon_period'
      */
-    public int get_beacon_period() {
-        return (int)getUIntBEElement(offsetBits_beacon_period(), 16);
+    public short get_beacon_period() {
+        return (short)getSIntBEElement(offsetBits_beacon_period(), 16);
     }
 
     /**
      * Set the value of the field 'beacon_period'
      */
-    public void set_beacon_period(int value) {
-        setUIntBEElement(offsetBits_beacon_period(), 16, value);
+    public void set_beacon_period(short value) {
+        setSIntBEElement(offsetBits_beacon_period(), 16, value);
     }
 
     /**

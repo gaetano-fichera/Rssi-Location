@@ -1,6 +1,7 @@
 #include "ApplicationDefinitions.h"
 #include "BeaconMessage.h"
 #include "Pos.h"
+#include "math.h"
 
 module BlindC {
 	uses interface Boot;
@@ -19,12 +20,17 @@ module BlindC {
 	uses interface Leds;
 
 } implementation {
+	Pos_t posBlind; //pos_t del blind
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
+	uint16_t step; //step della griglia
+	uint16_t dist[MAX_ANCHOR];
+	uint16_t qual[MAX_ANCHOR];
 	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
 	uint8_t bufferIndex[MAX_ANCHOR]; //array degli indici relativi al buffer per renderlo circolare
 	uint16_t buffer[MAX_ANCHOR][BUFFER_DEPTH]; //matrice buffer degli rssi dei messaggi ricevuti dalle ancore
 	bool bufferReady[MAX_ANCHOR]; //ogni elemento diventa 1 quando il relativo buffer è pieno
+	uint32_t avg_RSSI[MAX_ANCHOR]; //array delle medie RSSI rispetto ad ogni ancora
 	bool calcPosStarted; //booleana per segnare l'avvio del task per il calcolo della posizione
 
 	message_t serialMsg; //pacchetto di appoggio utilizzato per comunicazione seriale
@@ -61,6 +67,8 @@ module BlindC {
 		maxX = 0;
 		minY = 255;
 		maxY = 0;
+
+		step = 1;
 	}
 
 	event void RadioControl.startDone(error_t err){
@@ -166,32 +174,74 @@ module BlindC {
   		post calcPosTask();
    	}
 
-   	//algoritmo di stima posizione del blind
-   	task void calcPosTask(){
-   		sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
-		call Leds.led2Toggle(); //notifico il calcolo della posizione
-   	}
-
 	event void BeaconMsgSend.sendDone(message_t *m,error_t error){}
 
-	event void SerialMsgSend.sendDone(message_t *m,error_t error){
-		//call Leds.led2Toggle();
-	}
+	event void SerialMsgSend.sendDone(message_t *m,error_t error){}
 
+	//invio la posizione stimata dall'algoritmo
 	void sendToSerial(){
-		//codice di prova per invio seriale
-		Beacon_msg* beaconMsg;
-		Pos_t pos;
+		Pos_t* posBlindToSend;
 
-		beaconMsg = (Beacon_msg*) (call SerialPacket.getPayload(&serialMsg, sizeof(Beacon_msg)));
+		posBlindToSend = (Pos_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Pos_t)));
 
-		pos = posAnchors[2];
-
-		beaconMsg->anchor_id = 3;
-		beaconMsg->coordinate_x = pos.coordinate_x;
-		beaconMsg->coordinate_y = pos.coordinate_y;
-		beaconMsg->beacon_period = 69;
+		posBlindToSend->coordinate_x = posBlind.coordinate_x;
+		posBlindToSend->coordinate_y = posBlind.coordinate_y;
 
 		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Beacon_msg));
 	}
+
+	//algoritmo di stima posizione del blind
+   	task void calcPosTask(){
+		uint8_t i, j;
+		uint32_t average = 0, sum = 0;
+		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+
+		call Leds.led2On(); //notifico il calcolo della posizione
+
+		/* RSSI Buffer averages */
+		for (i = 0; i < MAX_ANCHOR; i++){
+			average = 0;
+			for (j = 0; j < BUFFER_DEPTH; j++) 
+				average += buffer[i][j];
+			/* NEXT TIME: consider >> x with BUFFER_DEPTH = 2^x */
+			average /= BUFFER_DEPTH;
+			avg_RSSI[i] = average;
+		}
+
+		/* For each supposed position... */
+		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
+			for (ysp = minY; ysp <= maxY; ysp = ysp + step){
+				/* Pseudo distance (1 + d2) */
+				for (j = 0; j < MAX_ANCHOR; j++){
+					dist[j] = 1 +
+						(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x) + 
+						(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);						
+				}
+
+				/* Quality function */
+				for (j = 0; j < MAX_ANCHOR; j++) 
+					//qual[j] = LUT[avg_RSSI[j]] * dist[j]; //mi manca LUT per la conversione
+					qual[j] = (avg_RSSI[j] + 40) * dist[j];
+
+				average = 0;
+				for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
+					average += qual[j];
+				average /= MAX_ANCHOR;
+
+				sum = 0;
+				for(j = 0; j < MAX_ANCHOR; j++)
+					sum += (qual[j] - average) * (qual[j] - average);
+				devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
+
+				/* Check for min devstd */
+				if (devstd < min_ds){
+					min_ds = devstd;
+					posBlind.coordinate_x = xsp;
+					posBlind.coordinate_y = ysp;
+				}
+			}
+		}
+		call Leds.led2Off(); //notifico il calcolo della posizione
+		sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
+   	}
 }
