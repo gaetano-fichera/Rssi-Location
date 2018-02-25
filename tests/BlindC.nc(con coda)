@@ -15,12 +15,23 @@ module BlindC {
 	uses interface Packet as SerialPacket;
 
 	uses interface Timer<TMilli> as CalcPosTimer;
+	uses interface Timer<TMilli> as TestSerialTimer; //prova serial
 
 	uses interface Leds;
 
 } implementation {
+	bool locked;
+
+	enum{
+		BEACON_QUEUE_LEN = 10 //lunghezza coda dei beacon
+	};
+
+	Beacon_msg beaconQueue[BEACON_QUEUE_LEN]; //coda dei beacon ricevuti
+	uint16_t rssiQueue[BEACON_QUEUE_LEN]; //coda degli rssi dei beacon ricevuti
+	uint8_t beaconQueueIndexIn, beaconQueueIndexOut; //indici per inserimento e estrazione dalla coda
+
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
-	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
+	Pos_t* posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
 	uint8_t bufferIndex[MAX_ANCHOR]; //array degli indici relativi al buffer per renderlo circolare
 	uint16_t buffer[MAX_ANCHOR][BUFFER_DEPTH]; //matrice buffer degli rssi dei messaggi ricevuti dalle ancore
@@ -31,13 +42,17 @@ module BlindC {
 
 	void init();//inizializza le variabili d'ambiente
 	uint16_t getRssi(message_t *msg); //estrare il valore rssi dal beacon ricevuto
-	void handleBeacon(Beacon_msg* beaconMsg, uint16_t rssi); //invocato ad ogni ricezione di un beacon
+	task void handleBeaconTask(); //invocato ad ogni ricezione di un beacon
 	void addToBuffer(uint8_t idAnchor, uint16_t rssi); //aggiunge al buffer il valore rssi del beacon ricevuto da un ancora
-	void calcMinMaxGrid(Pos_t posAnchor); //aggiorna gli estremi della griglia in base alle coordinate delle ancore
+	void calcMinMaxGrid(Pos_t* posAnchor); //aggiorna gli estremi della griglia in base alle coordinate delle ancore
 	void increaseBufferIndex(uint8_t id); //incrementa o resetta l'indice del buffer rendendolo circolare
 	bool IsBufferReady(); //controllo sul buffer, true se questo è pieno
 	task void calcPosTask(); //calcolo posizione del nodo blind
 	void sendToSerial(); //invio pachetto alla seriale
+
+	//gestione BeaconQueue e rssiQueue
+	void enqueueBeacon(Beacon_msg *beaconMsg);
+	Beacon_msg* dequeueBeacon();
 
 	event void Boot.booted(){
 		init();
@@ -61,6 +76,11 @@ module BlindC {
 		maxX = 0;
 		minY = 255;
 		maxY = 0;
+
+		locked = FALSE;
+
+		beaconQueueIndexIn = 0;
+		beaconQueueIndexOut = 0;
 	}
 
 	event void RadioControl.startDone(error_t err){
@@ -76,6 +96,7 @@ module BlindC {
 	event void SerialControl.startDone(error_t err){
 		if(err == SUCCESS){
 			//Ok
+			//call TestSerialTimer.startPeriodic(CALC_POS_INTERVAL_MS); //avvio timer prova serial
 		}else{
 			call RadioControl.start();
 		}
@@ -84,13 +105,27 @@ module BlindC {
 	event void SerialControl.stopDone(error_t result){}
 
 	event message_t* BeaconMsgReceive.receive(message_t* msg, void* payload, uint8_t len) {
-		if (len == sizeof(Beacon_msg)) { //prendo solo messaggi delle dimensioni di Beacon_msg
-			Beacon_msg* beaconMsg = (Beacon_msg*) payload;
-			uint16_t rssi = getRssi(msg);
+		if (len == sizeof(Beacon_msg) && !locked) { //prendo solo messaggi delle dimensioni di Beacon_msg
+			rssiQueue[beaconQueueIndexIn] = getRssi(msg);
+			enqueueBeacon((Beacon_msg*)payload);
+			call Leds.led0Toggle(); //notifico la ricezione di un beacon
+			post handleBeaconTask();
+
+			/*
+			Beacon_msg* beaconMsg;
+			uint16_t rssi;
+
+			locked = TRUE;
+
+			beaconMsg = (Beacon_msg*)payload;
+			rssi = getRssi(msg);
 
 			call Leds.led0Toggle(); //notifico la ricezione di un beacon
 
 			handleBeacon(beaconMsg, rssi); //gestisco il beacon ricevuto
+
+			locked = FALSE;
+			*/
   		}
   		return msg;
 	}
@@ -101,16 +136,31 @@ module BlindC {
   	}
 
   	//gestione del beacon ricevuto
-  	void handleBeacon(Beacon_msg* beaconMsg, uint16_t rssi){
+  	task void handleBeaconTask(){
+  		/*
+  		Beacon_msg* beaconMsg;
+		uint16_t rssi;
+
+		locked = TRUE;
+
+		beaconMsg = (Beacon_msg*)payload;
+		rssi = getRssi(msg);
+		*/
+
+		uint16_t rssi = rssiQueue[beaconQueueIndexOut];
+		Beacon_msg* beaconMsg = dequeueBeacon();
+
   		uint8_t idAnchor = beaconMsg->anchor_id;
   		idAnchor = idAnchor - 1; //perchè abbiamo considerato che gli id delle ancore siano numerate da 1 a MAX_ANCHOR
 
-  		if (!foundedAnchors[idAnchor]){ //aggiungo l'ancora nuova se non l'avevo trovata
-		  	//Pos_t posAnchor = {beaconMsg->coordinate_x, beaconMsg->coordinate_y}; //creo il pos_t da aggiungere con le coordinate dell'ancora
-		  	//posAnchor = (Pos_t) {beaconMsg->coordinate_x, beaconMsg->coordinate_y}; //assegno a pos le coordinate della nuova ancora
-		  	Pos_t posAnchor;
-		  	posAnchor.coordinate_x = beaconMsg->coordinate_x;
-		  	posAnchor.coordinate_y = beaconMsg->coordinate_y;
+  		if (!foundedAnchors[idAnchor]){ //aggiungo l'ancora nuova se ancora non l'avevo trovata
+		  	Pos_t *posAnchor; //creo il pos_t da aggiungere con le coordinate dell'ancora
+		  	//posAnchor = (Pos_t*) {0, 0};
+		  	posAnchor = (Pos_t*) {beaconMsg->coordinate_x, beaconMsg->coordinate_y};
+		  	/* dovrei fare così però per ora uso la riga qui sopra per assegnare i valori dell'ancora
+  			posAnchor->coordinate_x = 0;//beaconMsg->coordinate_x;
+  			posAnchor->coordinate_y = 0;//beaconMsg->coordinate_y;
+  			*/
 			posAnchors[idAnchor] = posAnchor; //aggiungo il pos_t all'array
 		
 			calcMinMaxGrid(posAnchor); //calcolo gli estremi della griglia
@@ -126,14 +176,16 @@ module BlindC {
   				call CalcPosTimer.startPeriodic(CALC_POS_INTERVAL_MS); //avvio timer per il calcolo della pos
   			}
   		}
-   	}
+  		
+  		locked = FALSE;
+  	}
 
   	//calcolo degli estremi della griglia quadrata
-  	void calcMinMaxGrid(Pos_t posAnchor){
-  		if (posAnchor.coordinate_x < minX) minX = posAnchor.coordinate_x;
-  		if (posAnchor.coordinate_x > maxX) maxX = posAnchor.coordinate_x;
-  		if (posAnchor.coordinate_y < minY) minY = posAnchor.coordinate_y;
-  		if (posAnchor.coordinate_y > maxY) maxY = posAnchor.coordinate_y;
+  	void calcMinMaxGrid(Pos_t *posAnchor){
+  		if (posAnchor->coordinate_x < minX) minX = posAnchor->coordinate_x;
+  		if (posAnchor->coordinate_x > maxX) maxX = posAnchor->coordinate_x;
+  		if (posAnchor->coordinate_y < minY) minY = posAnchor->coordinate_y;
+  		if (posAnchor->coordinate_y > maxY) maxY = posAnchor->coordinate_y;
   	}
 
   	//aggiorna il buffer degli rssi
@@ -166,7 +218,6 @@ module BlindC {
   		post calcPosTask();
    	}
 
-   	//algoritmo di stima posizione del blind
    	task void calcPosTask(){
    		sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
 		call Leds.led2Toggle(); //notifico il calcolo della posizione
@@ -181,17 +232,56 @@ module BlindC {
 	void sendToSerial(){
 		//codice di prova per invio seriale
 		Beacon_msg* beaconMsg;
-		Pos_t pos;
+		Pos_t* pos;
 
 		beaconMsg = (Beacon_msg*) (call SerialPacket.getPayload(&serialMsg, sizeof(Beacon_msg)));
 
 		pos = posAnchors[2];
 
-		beaconMsg->anchor_id = 3;
-		beaconMsg->coordinate_x = pos.coordinate_x;
-		beaconMsg->coordinate_y = pos.coordinate_y;
+		beaconMsg->anchor_id = 2;
+		beaconMsg->coordinate_x = pos->coordinate_x;
+		beaconMsg->coordinate_y = pos->coordinate_y;
 		beaconMsg->beacon_period = 69;
 
+		call SerialMsgSend.send(AM_BROADCAST_ADDR, &pos, sizeof(Pos_t));
+
 		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Beacon_msg));
+	}
+
+	event void TestSerialTimer.fired(){
+		if (!locked){
+			locked = TRUE;
+			sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
+			locked = FALSE;
+		}
+	}
+
+	void enqueueBeacon(Beacon_msg *beaconMsg){
+		beaconQueue[beaconQueueIndexIn] = *beaconMsg;
+		if (beaconQueueIndexIn == BEACON_QUEUE_LEN){
+			beaconQueueIndexIn = 0;
+		}else{
+			beaconQueueIndexIn = beaconQueueIndexIn + 1;
+		}
+		if (beaconQueueIndexIn < beaconQueueIndexOut) //in non può doppiare out quindi aumento anche out
+		{
+			if (beaconQueueIndexOut == BEACON_QUEUE_LEN){
+				beaconQueueIndexOut = 0;
+		}else{
+			beaconQueueIndexOut = beaconQueueIndexOut + 1;
+		}
+		}
+	}
+
+	Beacon_msg* dequeueBeacon(){
+		Beacon_msg* beaconAux;
+		uint8_t index_aux = beaconQueueIndexOut;
+		if (beaconQueueIndexOut == BEACON_QUEUE_LEN){
+			beaconQueueIndexOut = 0;
+		}else{
+			beaconQueueIndexOut = beaconQueueIndexOut + 1;
+		}
+		beaconAux = &beaconQueue[index_aux];
+		return beaconAux;
 	}
 }

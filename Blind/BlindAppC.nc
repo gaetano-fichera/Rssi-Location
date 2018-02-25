@@ -1,5 +1,5 @@
 #include "BeaconMessage.h"
-#include "Post.h"
+#include "Pos.h"
 #include "message.h"
 
 configuration BlindAppC {
@@ -9,6 +9,6 @@ configuration BlindAppC {
   components CC2420ActiveMessageC;
   
   App -> CC2420ActiveMessageC.CC2420Packet;
-  App -> BaseStationC.RadioIntercept[AM_RSSIMSG];
+  App -> BaseStationC.RadioIntercept[AM_BEACON_MSG];
   App.Leds -> LedsC;
 }

@@ -15,6 +15,8 @@ public class BlindMain implements MessageListener {
 
   public void messageReceived(int to, Message message) {
     BeaconMsg msg = (BeaconMsg)message;
+    int source = message.getSerialPacket().get_header_src();
+    
     System.out.println("Received beacon " + msg.toString());
   }
   

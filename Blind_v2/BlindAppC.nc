@@ -3,25 +3,31 @@
 configuration BlindAppC {
 } implementation {
 	components MainC, LedsC;
-	components ActiveMessageC, SerialActiveMessageC;
-	components CC2420PacketC;
+
+	components ActiveMessageC as RadioAM;
 	components new AMSenderC(AM_BEACON_MSG) as BeaconMsgSender;
 	components new AMReceiverC(AM_BEACON_MSG) as BeaconMsgReceiver;
+	components CC2420PacketC as TelosBeaconPacket;
+
+	components SerialActiveMessageC as SerialAM;
 	components new SerialAMSenderC(AM_BEACON_MSG) as SerialMsgSender;
+
 	components new TimerMilliC() as Timer0;
-	components new TimerMilliC() as Timer1;
+
 	components BlindC as App;
 
+
 	App.Boot -> MainC;
-  	App.BeaconPacket -> CC2420PacketC;
-  	App.RadioControl -> ActiveMessageC;
-  	App.SerialControl -> SerialActiveMessageC;
-  	App.SerialMsgSend -> SerialMsgSender;
-  	App.SerialPacket -> SerialActiveMessageC;
+
+  	App.RadioControl -> RadioAM;
 	App.BeaconMsgReceive -> BeaconMsgReceiver;
 	App.BeaconMsgSend -> BeaconMsgSender;
-	App.CalcPosTimer -> Timer0;
-	App.SerialTestTimer -> Timer1;
-	App.Leds -> LedsC;
+	App.BeaconPacket -> TelosBeaconPacket;
 
+  	App.SerialControl -> SerialAM;
+  	App.SerialMsgSend -> SerialMsgSender;
+  	App.SerialPacket -> SerialAM;
+
+	App.CalcPosTimer -> Timer0;
+	App.Leds -> LedsC;
 }
