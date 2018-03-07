@@ -1,6 +1,7 @@
 #include "ApplicationDefinitions.h"
 #include "BeaconMessage.h"
 #include "Pos.h"
+#include "Result.h"
 #include "math.h"
 
 module BlindC {
@@ -20,7 +21,11 @@ module BlindC {
 	uses interface Leds;
 
 } implementation {
-	Pos_t posBlind; //pos_t del blind
+	//offset pari a 45 
+	uint16_t LUT[80] = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6, 7, 7, 8, 10, 11, 12, 14, 15, 17, 19, 22, 25, 28, 31, 35, 39, 44, 50, 56, 63, 70, 79, 89, 100, 112, 125, 141, 158, 177, 199, 223, 251, 281, 316, 354, 398, 446, 501, 562, 630, 707, 794, 891, 1000, 1122, 1258, 1412, 1584, 1778, 1995, 2238, 2511, 2818, 3162, 3548, 3981, 4466, 5011, 5623, 6309, 7079, 7943, 8912, 10000};
+	uint16_t offsetRSSI = 45;
+	Pos_t posBlindA; //pos_t del blind con algoritmo A
+	Pos_t posBlindB; //pos_t del blind con algoritmo B
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
 	uint16_t step; //step della griglia
 	uint16_t dist[MAX_ANCHOR];
@@ -180,14 +185,23 @@ module BlindC {
 
 	//invio la posizione stimata dall'algoritmo
 	void sendToSerial(){
-		Pos_t* posBlindToSend;
+		//Pos_t* posBlindToSend;
+		Result_t* resultToSend;
 
-		posBlindToSend = (Pos_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Pos_t)));
+		resultToSend = (Result_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Result_t)));
 
-		posBlindToSend->coordinate_x = posBlind.coordinate_x;
-		posBlindToSend->coordinate_y = posBlind.coordinate_y;
+		//posBlindToSend = (Pos_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Pos_t)));
 
-		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Beacon_msg));
+		//posBlindToSend->coordinate_x = posBlind.coordinate_x;
+		//posBlindToSend->coordinate_y = posBlind.coordinate_y;
+
+		resultToSend->coordinate_x_A = posBlindA.coordinate_x;
+		resultToSend->coordinate_y_A = posBlindA.coordinate_y;
+		resultToSend->coordinate_x_B = posBlindB.coordinate_x;
+		resultToSend->coordinate_y_B = posBlindB.coordinate_y;
+
+		//call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Pos_t));
+		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Result_t));
 	}
 
 	//algoritmo di stima posizione del blind
@@ -208,6 +222,7 @@ module BlindC {
 			avg_RSSI[i] = average;
 		}
 
+		/* Controllo di ogni posizione della griglia */
 		/* For each supposed position... */
 		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
 			for (ysp = minY; ysp <= maxY; ysp = ysp + step){
@@ -220,8 +235,7 @@ module BlindC {
 
 				/* Quality function */
 				for (j = 0; j < MAX_ANCHOR; j++) 
-					//qual[j] = LUT[avg_RSSI[j]] * dist[j]; //mi manca LUT per la conversione
-					qual[j] = (avg_RSSI[j] + 40) * dist[j];
+					qual[j] = LUT[avg_RSSI[j] + offsetRSSI] * dist[j];
 
 				average = 0;
 				for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
@@ -236,8 +250,8 @@ module BlindC {
 				/* Check for min devstd */
 				if (devstd < min_ds){
 					min_ds = devstd;
-					posBlind.coordinate_x = xsp;
-					posBlind.coordinate_y = ysp;
+					posBlindA.coordinate_x = xsp;
+					posBlindA.coordinate_y = ysp;
 				}
 			}
 		}

@@ -1,5 +1,6 @@
 #include "BeaconMessage.h"
 #include "Pos.h"
+#include "Result.h"
 
 configuration BlindAppC {
 } implementation {
@@ -11,7 +12,7 @@ configuration BlindAppC {
 	components CC2420PacketC as TelosBeaconPacket;
 
 	components SerialActiveMessageC as SerialAM;
-	components new SerialAMSenderC(AM_POS_T) as SerialMsgSender;
+	components new SerialAMSenderC(AM_RESULT_T) as SerialMsgSender;
 
 	components new TimerMilliC() as Timer0;
 
