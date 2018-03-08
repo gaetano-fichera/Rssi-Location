@@ -6,6 +6,9 @@ BeaconMessage.class: BeaconMessage.java
 Pos.class: Pos.java
 	javac $<
 
+Result.class: Result.java
+	javac $<
+
 BlindMain.class: BlindMain.java BeaconMessage.java Pos.java
 	javac $^
 
@@ -14,3 +17,4 @@ BeaconMessage.java: ../BeaconMessage.h
 
 Pos.java: ../Pos.h
 	mig java -target=null -java-classname=Pos $< Pos_t -o $@
+

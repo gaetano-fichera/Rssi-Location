@@ -27,9 +27,13 @@ module BlindC {
 	Pos_t posBlindA; //pos_t del blind con algoritmo A
 	Pos_t posBlindB; //pos_t del blind con algoritmo B
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
-	uint16_t step; //step della griglia
-	uint16_t dist[MAX_ANCHOR];
-	uint16_t qual[MAX_ANCHOR];
+	uint16_t step = STEP_SIZE; //step della griglia
+	uint16_t distA[MAX_ANCHOR];
+	uint16_t distBX[MAX_ANCHOR];
+	uint16_t distBY[MAX_ANCHOR];
+	uint16_t qualA[MAX_ANCHOR];
+	uint16_t qualBX[MAX_ANCHOR];
+	uint16_t qualBY[MAX_ANCHOR];
 	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
 	uint8_t bufferIndex[MAX_ANCHOR]; //array degli indici relativi al buffer per renderlo circolare
@@ -49,6 +53,8 @@ module BlindC {
 	bool IsBufferReady(); //controllo sul buffer, true se questo è pieno
 	task void calcPosTask(); //calcolo posizione del nodo blind
 	void sendToSerial(); //invio pachetto alla seriale
+	void AlgoA();
+	void AlgoB();
 
 	event void Boot.booted(){
 		init();
@@ -72,8 +78,6 @@ module BlindC {
 		maxX = 0;
 		minY = 255;
 		maxY = 0;
-
-		step = 1;
 	}
 
 	event void RadioControl.startDone(error_t err){
@@ -207,8 +211,7 @@ module BlindC {
 	//algoritmo di stima posizione del blind
    	task void calcPosTask(){
 		uint8_t i, j;
-		uint32_t average = 0, sum = 0;
-		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+		uint32_t average = 0;
 
 		call Leds.led2On(); //notifico il calcolo della posizione
 
@@ -222,29 +225,42 @@ module BlindC {
 			avg_RSSI[i] = average;
 		}
 
+		AlgoA();
+		AlgoB();
+
+		call Leds.led2Off(); //notifico il calcolo della posizione
+		sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
+   	}
+
+   		//algoritmo di stima posizione del blind
+   	void AlgoA(){
+		uint8_t j;
+		uint32_t sum = 0, average;
+		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+
 		/* Controllo di ogni posizione della griglia */
 		/* For each supposed position... */
 		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
 			for (ysp = minY; ysp <= maxY; ysp = ysp + step){
 				/* Pseudo distance (1 + d2) */
 				for (j = 0; j < MAX_ANCHOR; j++){
-					dist[j] = 1 +
+					distA[j] = 1 +
 						(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x) + 
 						(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);						
 				}
 
 				/* Quality function */
 				for (j = 0; j < MAX_ANCHOR; j++) 
-					qual[j] = LUT[avg_RSSI[j] + offsetRSSI] * dist[j];
+					qualA[j] = LUT[avg_RSSI[j] + offsetRSSI] * distA[j];
 
 				average = 0;
 				for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-					average += qual[j];
+					average += qualA[j];
 				average /= MAX_ANCHOR;
 
 				sum = 0;
 				for(j = 0; j < MAX_ANCHOR; j++)
-					sum += (qual[j] - average) * (qual[j] - average);
+					sum += (qualA[j] - average) * (qualA[j] - average);
 				devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
 
 				/* Check for min devstd */
@@ -255,7 +271,68 @@ module BlindC {
 				}
 			}
 		}
-		call Leds.led2Off(); //notifico il calcolo della posizione
-		sendToSerial(); //invio dei dati alla seriale dopo il calolo della posizione
+   	}
+
+   	   		//algoritmo di stima posizione del blind
+   	void AlgoB(){
+		uint8_t j;
+		uint32_t sum = 0, average;
+		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+
+		/* Controllo di ogni posizione della griglia */
+		/* For each supposed position... */
+		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
+			/* Pseudo distanceX(1 + d2) */
+			for (j = 0; j < MAX_ANCHOR; j++){
+				distBX[j] = 1 +(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x);
+			}
+
+			/* Quality function */
+			for (j = 0; j < MAX_ANCHOR; j++) 
+				qualBX[j] = LUT[avg_RSSI[j] + offsetRSSI] * distBX[j];
+
+			average = 0;
+			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
+				average += qualBX[j];
+			average /= MAX_ANCHOR;
+
+			sum = 0;
+			for(j = 0; j < MAX_ANCHOR; j++)
+				sum += (qualBX[j] - average) * (qualBX[j] - average);
+			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
+
+			/* Check for min devstd */
+			if (devstd < min_ds){
+				min_ds = devstd;
+				posBlindB.coordinate_x = xsp;
+			}	
+		}
+
+		for (ysp = minY; ysp <= maxY; ysp = ysp + step){
+				/* Pseudo distanceY(1 + d2) */
+			for (j = 0; j < MAX_ANCHOR; j++){
+				distBY[j] = 1 +(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);
+			}
+
+			/* Quality function */
+			for (j = 0; j < MAX_ANCHOR; j++) 
+				qualBY[j] = LUT[avg_RSSI[j] + offsetRSSI] * distBY[j];
+
+			average = 0;
+			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
+				average += qualBY[j];
+			average /= MAX_ANCHOR;
+
+			sum = 0;
+			for(j = 0; j < MAX_ANCHOR; j++)
+				sum += (qualBY[j] - average) * (qualBY[j] - average);
+			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
+
+			/* Check for min devstd */
+			if (devstd < min_ds){
+				min_ds = devstd;
+				posBlindB.coordinate_y = ysp;
+			}	
+		}
    	}
 }
