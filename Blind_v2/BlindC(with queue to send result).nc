@@ -17,6 +17,7 @@ module BlindC {
 	uses interface Packet as SerialPacket;
 
 	uses interface Timer<TMilli> as CalcPosTimer;
+	uses interface Timer<TMilli> as SendResultTimer;
 
 	uses interface Leds;
 
@@ -36,7 +37,7 @@ module BlindC {
 	uint16_t qualA[MAX_ANCHOR];
 	uint16_t qualBX[MAX_ANCHOR];
 	uint16_t qualBY[MAX_ANCHOR];
-	uint16_t iterAlgo;
+	uint16_t iterA, iterB;
 	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
 	uint8_t bufferIndex[MAX_ANCHOR]; //array degli indici relativi al buffer per renderlo circolare
@@ -44,6 +45,7 @@ module BlindC {
 	bool bufferReady[MAX_ANCHOR]; //ogni elemento diventa 1 quando il relativo buffer è pieno
 	uint32_t avg_RSSI[MAX_ANCHOR]; //array delle medie RSSI rispetto ad ogni ancora
 	bool calcPosStarted; //booleana per segnare l'avvio del task per il calcolo della posizione
+	bool sendResultStarted = FALSE; //booleana per segnare l'avvio del task per inviare i risultati alla seriale
 
 	message_t serialMsg; //pacchetto di appoggio utilizzato per comunicazione seriale
 
@@ -58,9 +60,15 @@ module BlindC {
 	void increaseBufferIndex(uint8_t id); //incrementa o resetta l'indice del buffer rendendolo circolare
 	bool IsBufferReady(); //controllo sul buffer, true se questo è pieno
 	task void calcPosTask(); //calcolo posizione del nodo blind
-	void sendToSerial(Result_t result); //invio pachetto alla seriale
+	void sendToSerial(); //invio pachetto alla seriale
 	void AlgoA();
 	void AlgoB();
+
+	Result_t createResult(uint16_t iter, uint8_t idAlgo, uint8_t stateAlgo);
+	void enqueueResult(Result_t result); //funzione per inserire nella coda dei risultati
+	Result_t dequeueResult();//funzione per prelevare dalla coda dei risultati
+
+	void sendToSerialOld(Result_t result);
 
 	event void Boot.booted(){
 		init();
@@ -90,7 +98,11 @@ module BlindC {
 		posBlindB.coordinate_x = 0;
 		posBlindB.coordinate_y = 0;
 
-		iterAlgo = 0;
+		iterA = 0;
+		iterB = 0;
+
+		resultsQueueRear = -1;
+		resultsQueueFront = -1;
 	}
 
 	event void RadioControl.startDone(error_t err){
@@ -196,53 +208,143 @@ module BlindC {
   		post calcPosTask();
    	}
 
+   	event void SendResultTimer.fired() {
+  		sendToSerial();
+   	}
+
 	event void BeaconMsgSend.sendDone(message_t *m,error_t error){}
 
 	event void SerialMsgSend.sendDone(message_t *m,error_t error){}
 
 	//invio la posizione stimata dall'algoritmo (non funzionante, ovvero perde i messaggi, se richiamato con una frequenza elevata)
-	void sendToSerial(Result_t result){
+	void sendToSerialOld(Result_t result){
 		Result_t* resultToSend;
 
 		resultToSend = (Result_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Result_t)));
 
 		resultToSend->iterazione = result.iterazione;
-		resultToSend->timestamp_inizio_A = result.timestamp_inizio_A;
-		resultToSend->timestamp_fine_A = result.timestamp_fine_A;
-		resultToSend->timestamp_inizio_B = result.timestamp_inizio_B;
-		resultToSend->timestamp_fine_B = result.timestamp_fine_B;
-		resultToSend->coordinate_x_A = result.coordinate_x_A;
-		resultToSend->coordinate_y_A = result.coordinate_y_A;
-		resultToSend->coordinate_x_B = result.coordinate_x_B;
-		resultToSend->coordinate_y_B = result.coordinate_y_B;		
+		resultToSend->id_algoritmo = result.id_algoritmo;
+		resultToSend->state_algoritmo = result.state_algoritmo;
+		resultToSend->timestamp = result.timestamp;
+		resultToSend->coordinate_x = result.coordinate_x;
+		resultToSend->coordinate_y = result.coordinate_y;
 
 		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Result_t));
 	}
 
+	//invio la posizione stimata dall'algoritmo
+	void sendToSerial(){
+		Result_t result = dequeueResult();
+
+		Result_t* resultToSend;
+
+		resultToSend = (Result_t*) (call SerialPacket.getPayload(&serialMsg, sizeof(Result_t)));
+
+		resultToSend->iterazione = result.iterazione;
+		resultToSend->id_algoritmo = result.id_algoritmo;
+		resultToSend->state_algoritmo = result.state_algoritmo;
+		resultToSend->timestamp = result.timestamp;
+		resultToSend->coordinate_x = result.coordinate_x;
+		resultToSend->coordinate_y = result.coordinate_y;
+
+		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Result_t));
+	}
+
+	void enqueueResult(Result_t result){
+		if((resultsQueueFront == 0 && resultsQueueRear == RESULTS_QUEUE_DEPTH - 1) || (resultsQueueFront == resultsQueueRear + 1)){
+			/* queue full */
+			return;
+		}else if(resultsQueueRear == - 1){
+			resultsQueueRear++;
+			resultsQueueFront++;
+		}else if(resultsQueueRear == (RESULTS_QUEUE_DEPTH - 1) && resultsQueueFront > 0){
+			resultsQueueRear = 0;
+		}else{
+			resultsQueueRear++;
+		}
+		resultsToSendQueue[resultsQueueRear].iterazione = result.iterazione;
+		resultsToSendQueue[resultsQueueRear].id_algoritmo = result.id_algoritmo;
+		resultsToSendQueue[resultsQueueRear].state_algoritmo = result.state_algoritmo;
+		resultsToSendQueue[resultsQueueRear].timestamp = result.timestamp;
+		resultsToSendQueue[resultsQueueRear].coordinate_x = result.coordinate_x;
+		resultsToSendQueue[resultsQueueRear].coordinate_y = result.coordinate_y;
+	}
+
+	Result_t dequeueResult(){
+		Result_t result;
+		if(resultsQueueFront == - 1){
+			/* queue empty */;
+		}else if(resultsQueueFront == resultsQueueRear){
+			result.iterazione = resultsToSendQueue[resultsQueueFront].iterazione;
+			result.id_algoritmo = resultsToSendQueue[resultsQueueFront].id_algoritmo;
+			result.state_algoritmo = resultsToSendQueue[resultsQueueFront].state_algoritmo;
+			result.timestamp = resultsToSendQueue[resultsQueueFront].timestamp;
+			result.coordinate_x = resultsToSendQueue[resultsQueueFront].coordinate_x;
+			result.coordinate_y = resultsToSendQueue[resultsQueueFront].coordinate_y;
+
+			resultsQueueFront = - 1;
+			resultsQueueRear = - 1;
+		}else{
+			result.iterazione = resultsToSendQueue[resultsQueueFront].iterazione;
+			result.id_algoritmo = resultsToSendQueue[resultsQueueFront].id_algoritmo;
+			result.state_algoritmo = resultsToSendQueue[resultsQueueFront].state_algoritmo;
+			result.timestamp = resultsToSendQueue[resultsQueueFront].timestamp;
+			result.coordinate_x = resultsToSendQueue[resultsQueueFront].coordinate_x;
+			result.coordinate_y = resultsToSendQueue[resultsQueueFront].coordinate_y;
+
+			resultsQueueFront++;
+		}
+
+		return result;
+	}
+
+	Result_t createResult(uint16_t iter, uint8_t idAlgo, uint8_t stateAlgo){
+		Result_t result;
+
+		result.iterazione = iter;
+		result.id_algoritmo = idAlgo;
+		result.state_algoritmo = stateAlgo;
+		result.timestamp = call LocalTime.get();
+
+		if (idAlgo == ID_ALGO_A){
+			result.coordinate_x = posBlindA.coordinate_x;
+			result.coordinate_y = posBlindA.coordinate_y;
+		}else if(idAlgo == ID_ALGO_B){
+			result.coordinate_x = posBlindB.coordinate_x;
+			result.coordinate_y = posBlindB.coordinate_y;
+		}
+
+		return result;
+	}
+
 	//task per il calcolo della posizione del Blind
    	task void calcPosTask(){
-   		Result_t result;
+   		Result_t result1;
+   		Result_t result2;
+   		Result_t result3;
+   		Result_t result4;
 
 		call Leds.led2On(); //notifico inizio calcolo della posizione
 
-		iterAlgo++;
-		result.iterazione = iterAlgo;
-
-		result.timestamp_inizio_A = call LocalTime.get();
+		result1 = createResult(iterA, STATE_START_ALGO, ID_ALGO_A);
+		enqueueResult(result1);
+		//sendToSerialOld(result1);
 		AlgoA();
-		result.timestamp_fine_A = call LocalTime.get();
+		result2 = createResult(iterA, STATE_END_ALGO, ID_ALGO_A);
+		enqueueResult(result2);
+		//sendToSerialOld(result2);
+		iterA++;
 
-		result.coordinate_x_A = posBlindA.coordinate_x;
-		result.coordinate_y_A = posBlindA.coordinate_y;
-
-		result.timestamp_inizio_B = call LocalTime.get();
+		result3 = createResult(iterB, STATE_START_ALGO, ID_ALGO_B);
+		enqueueResult(result3);
+		//sendToSerialOld(result3);
 		AlgoB();
-		result.timestamp_fine_B = call LocalTime.get();
+		result4 = createResult(iterB, STATE_END_ALGO, ID_ALGO_B);
+		enqueueResult(result4);
+		//sendToSerialOld(result4);
+		iterB++;
 
-		result.coordinate_x_B = posBlindB.coordinate_x;
-		result.coordinate_y_B = posBlindB.coordinate_y;
-		
-		sendToSerial(result);
+		if (!sendResultStarted) call SendResultTimer.startPeriodic(SEND_RESULT_INTERVAL_MS); //avvio timer per mandare i risultati alla seriale
 
 		call Leds.led2Off(); //notifico fine calcolo della posizione
    	}

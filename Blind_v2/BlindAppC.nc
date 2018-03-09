@@ -15,8 +15,9 @@ configuration BlindAppC {
 	components new SerialAMSenderC(AM_RESULT_T) as SerialMsgSender;
 
 	components new TimerMilliC() as Timer0;
+	//components new TimerMilliC() as Timer1;
 
-	components BlindC as App;
+	components LocalTimeMilliC, BlindC as App;
 
 
 	App.Boot -> MainC;
@@ -31,5 +32,9 @@ configuration BlindAppC {
   	App.SerialPacket -> SerialAM;
 
 	App.CalcPosTimer -> Timer0;
+	//App.SendResultTimer -> Timer1;
+
 	App.Leds -> LedsC;
+
+	App.LocalTime -> LocalTimeMilliC; 
 }

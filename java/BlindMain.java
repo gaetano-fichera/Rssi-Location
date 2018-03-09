@@ -27,13 +27,41 @@ public class BlindMain implements MessageListener {
       "Beacon Period: " + msg.get_beacon_period());
     */
 
-    String resultLog = "Posizione Blind \n" +
-      "X_A: " + msg.get_coordinate_x_A() + "\n" +
-      "Y_A: " + msg.get_coordinate_y_A() + "\n" +
-      "X_B: " + msg.get_coordinate_x_B() + "\n" +
-      "Y_B: " + msg.get_coordinate_y_B() + "\n";
+    /*
+    String resultLog = msg.get_iterazione() + " " +
+      msg.get_id_algoritmo() + " " +
+      msg.get_state_algoritmo() + " " +
+      msg.get_timestamp() + " " +
+      msg.get_coordinate_x() + " " +
+      msg.get_coordinate_y() + "\n";
+    */
 
-    System.out.println(resultLog);
+    String resultLog = msg.get_iterazione() + " " +
+      "0" + " " +
+      "0" + " " +
+      msg.get_timestamp_inizio_A() + " " +
+      "0" + " " +
+      "0" + "\n" +
+      msg.get_iterazione() + " " +
+      "0" + " " +
+      "1" + " " +
+      msg.get_timestamp_fine_A() + " " +
+      msg.get_coordinate_x_A() + " " +
+      msg.get_coordinate_y_A() + "\n" +
+      msg.get_iterazione() + " " +
+      "1" + " " +
+      "0" + " " +
+      msg.get_timestamp_inizio_B() + " " +
+      "0" + " " +
+      "0" + "\n" +
+      msg.get_iterazione() + " " +
+      "1" + " " +
+      "1" + " " +
+      msg.get_timestamp_fine_B() + " " +
+      msg.get_coordinate_x_B() + " " +
+      msg.get_coordinate_y_B() + "\n";
+
+    System.out.print(resultLog);
     
     printOnFile(logWriter, resultLog);
   }

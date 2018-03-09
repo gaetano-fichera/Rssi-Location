@@ -7,12 +7,12 @@
 public class Result extends net.tinyos.message.Message {
 
     /** The default size of this message type in bytes. */
-    public static final int DEFAULT_MESSAGE_SIZE = 8;
+    public static final int DEFAULT_MESSAGE_SIZE = 26;
 
     /** The Active Message type associated with this message. */
     public static final int AM_TYPE = 8;
 
-    /** Create a new Result of size 8. */
+    /** Create a new Result of size 26. */
     public Result() {
         super(DEFAULT_MESSAGE_SIZE);
         amTypeSet(AM_TYPE);
@@ -85,10 +85,25 @@ public class Result extends net.tinyos.message.Message {
     public String toString() {
       String s = "Message <Result> \n";
       try {
+        s += "  [iterazione=0x"+Long.toHexString(get_iterazione())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
+        s += "  [timestamp_inizio_A=0x"+Long.toHexString(get_timestamp_inizio_A())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
+        s += "  [timestamp_fine_A=0x"+Long.toHexString(get_timestamp_fine_A())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
         s += "  [coordinate_x_A=0x"+Long.toHexString(get_coordinate_x_A())+"]\n";
       } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
       try {
         s += "  [coordinate_y_A=0x"+Long.toHexString(get_coordinate_y_A())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
+        s += "  [timestamp_inizio_B=0x"+Long.toHexString(get_timestamp_inizio_B())+"]\n";
+      } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
+      try {
+        s += "  [timestamp_fine_B=0x"+Long.toHexString(get_timestamp_fine_B())+"]\n";
       } catch (ArrayIndexOutOfBoundsException aioobe) { /* Skip field */ }
       try {
         s += "  [coordinate_x_B=0x"+Long.toHexString(get_coordinate_x_B())+"]\n";
@@ -102,9 +117,198 @@ public class Result extends net.tinyos.message.Message {
     // Message-type-specific access methods appear below.
 
     /////////////////////////////////////////////////////////
-    // Accessor methods for field: coordinate_x_A
+    // Accessor methods for field: iterazione
     //   Field type: int, unsigned
     //   Offset (bits): 0
+    //   Size (bits): 16
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'iterazione' is signed (false).
+     */
+    public static boolean isSigned_iterazione() {
+        return false;
+    }
+
+    /**
+     * Return whether the field 'iterazione' is an array (false).
+     */
+    public static boolean isArray_iterazione() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'iterazione'
+     */
+    public static int offset_iterazione() {
+        return (0 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'iterazione'
+     */
+    public static int offsetBits_iterazione() {
+        return 0;
+    }
+
+    /**
+     * Return the value (as a int) of the field 'iterazione'
+     */
+    public int get_iterazione() {
+        return (int)getUIntBEElement(offsetBits_iterazione(), 16);
+    }
+
+    /**
+     * Set the value of the field 'iterazione'
+     */
+    public void set_iterazione(int value) {
+        setUIntBEElement(offsetBits_iterazione(), 16, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'iterazione'
+     */
+    public static int size_iterazione() {
+        return (16 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'iterazione'
+     */
+    public static int sizeBits_iterazione() {
+        return 16;
+    }
+
+    /////////////////////////////////////////////////////////
+    // Accessor methods for field: timestamp_inizio_A
+    //   Field type: long, unsigned
+    //   Offset (bits): 16
+    //   Size (bits): 32
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'timestamp_inizio_A' is signed (false).
+     */
+    public static boolean isSigned_timestamp_inizio_A() {
+        return false;
+    }
+
+    /**
+     * Return whether the field 'timestamp_inizio_A' is an array (false).
+     */
+    public static boolean isArray_timestamp_inizio_A() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'timestamp_inizio_A'
+     */
+    public static int offset_timestamp_inizio_A() {
+        return (16 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'timestamp_inizio_A'
+     */
+    public static int offsetBits_timestamp_inizio_A() {
+        return 16;
+    }
+
+    /**
+     * Return the value (as a long) of the field 'timestamp_inizio_A'
+     */
+    public long get_timestamp_inizio_A() {
+        return (long)getUIntBEElement(offsetBits_timestamp_inizio_A(), 32);
+    }
+
+    /**
+     * Set the value of the field 'timestamp_inizio_A'
+     */
+    public void set_timestamp_inizio_A(long value) {
+        setUIntBEElement(offsetBits_timestamp_inizio_A(), 32, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'timestamp_inizio_A'
+     */
+    public static int size_timestamp_inizio_A() {
+        return (32 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'timestamp_inizio_A'
+     */
+    public static int sizeBits_timestamp_inizio_A() {
+        return 32;
+    }
+
+    /////////////////////////////////////////////////////////
+    // Accessor methods for field: timestamp_fine_A
+    //   Field type: long, unsigned
+    //   Offset (bits): 48
+    //   Size (bits): 32
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'timestamp_fine_A' is signed (false).
+     */
+    public static boolean isSigned_timestamp_fine_A() {
+        return false;
+    }
+
+    /**
+     * Return whether the field 'timestamp_fine_A' is an array (false).
+     */
+    public static boolean isArray_timestamp_fine_A() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'timestamp_fine_A'
+     */
+    public static int offset_timestamp_fine_A() {
+        return (48 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'timestamp_fine_A'
+     */
+    public static int offsetBits_timestamp_fine_A() {
+        return 48;
+    }
+
+    /**
+     * Return the value (as a long) of the field 'timestamp_fine_A'
+     */
+    public long get_timestamp_fine_A() {
+        return (long)getUIntBEElement(offsetBits_timestamp_fine_A(), 32);
+    }
+
+    /**
+     * Set the value of the field 'timestamp_fine_A'
+     */
+    public void set_timestamp_fine_A(long value) {
+        setUIntBEElement(offsetBits_timestamp_fine_A(), 32, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'timestamp_fine_A'
+     */
+    public static int size_timestamp_fine_A() {
+        return (32 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'timestamp_fine_A'
+     */
+    public static int sizeBits_timestamp_fine_A() {
+        return 32;
+    }
+
+    /////////////////////////////////////////////////////////
+    // Accessor methods for field: coordinate_x_A
+    //   Field type: int, unsigned
+    //   Offset (bits): 80
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
@@ -126,14 +330,14 @@ public class Result extends net.tinyos.message.Message {
      * Return the offset (in bytes) of the field 'coordinate_x_A'
      */
     public static int offset_coordinate_x_A() {
-        return (0 / 8);
+        return (80 / 8);
     }
 
     /**
      * Return the offset (in bits) of the field 'coordinate_x_A'
      */
     public static int offsetBits_coordinate_x_A() {
-        return 0;
+        return 80;
     }
 
     /**
@@ -167,7 +371,7 @@ public class Result extends net.tinyos.message.Message {
     /////////////////////////////////////////////////////////
     // Accessor methods for field: coordinate_y_A
     //   Field type: int, unsigned
-    //   Offset (bits): 16
+    //   Offset (bits): 96
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
@@ -189,14 +393,14 @@ public class Result extends net.tinyos.message.Message {
      * Return the offset (in bytes) of the field 'coordinate_y_A'
      */
     public static int offset_coordinate_y_A() {
-        return (16 / 8);
+        return (96 / 8);
     }
 
     /**
      * Return the offset (in bits) of the field 'coordinate_y_A'
      */
     public static int offsetBits_coordinate_y_A() {
-        return 16;
+        return 96;
     }
 
     /**
@@ -228,9 +432,135 @@ public class Result extends net.tinyos.message.Message {
     }
 
     /////////////////////////////////////////////////////////
+    // Accessor methods for field: timestamp_inizio_B
+    //   Field type: long, unsigned
+    //   Offset (bits): 112
+    //   Size (bits): 32
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'timestamp_inizio_B' is signed (false).
+     */
+    public static boolean isSigned_timestamp_inizio_B() {
+        return false;
+    }
+
+    /**
+     * Return whether the field 'timestamp_inizio_B' is an array (false).
+     */
+    public static boolean isArray_timestamp_inizio_B() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'timestamp_inizio_B'
+     */
+    public static int offset_timestamp_inizio_B() {
+        return (112 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'timestamp_inizio_B'
+     */
+    public static int offsetBits_timestamp_inizio_B() {
+        return 112;
+    }
+
+    /**
+     * Return the value (as a long) of the field 'timestamp_inizio_B'
+     */
+    public long get_timestamp_inizio_B() {
+        return (long)getUIntBEElement(offsetBits_timestamp_inizio_B(), 32);
+    }
+
+    /**
+     * Set the value of the field 'timestamp_inizio_B'
+     */
+    public void set_timestamp_inizio_B(long value) {
+        setUIntBEElement(offsetBits_timestamp_inizio_B(), 32, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'timestamp_inizio_B'
+     */
+    public static int size_timestamp_inizio_B() {
+        return (32 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'timestamp_inizio_B'
+     */
+    public static int sizeBits_timestamp_inizio_B() {
+        return 32;
+    }
+
+    /////////////////////////////////////////////////////////
+    // Accessor methods for field: timestamp_fine_B
+    //   Field type: long, unsigned
+    //   Offset (bits): 144
+    //   Size (bits): 32
+    /////////////////////////////////////////////////////////
+
+    /**
+     * Return whether the field 'timestamp_fine_B' is signed (false).
+     */
+    public static boolean isSigned_timestamp_fine_B() {
+        return false;
+    }
+
+    /**
+     * Return whether the field 'timestamp_fine_B' is an array (false).
+     */
+    public static boolean isArray_timestamp_fine_B() {
+        return false;
+    }
+
+    /**
+     * Return the offset (in bytes) of the field 'timestamp_fine_B'
+     */
+    public static int offset_timestamp_fine_B() {
+        return (144 / 8);
+    }
+
+    /**
+     * Return the offset (in bits) of the field 'timestamp_fine_B'
+     */
+    public static int offsetBits_timestamp_fine_B() {
+        return 144;
+    }
+
+    /**
+     * Return the value (as a long) of the field 'timestamp_fine_B'
+     */
+    public long get_timestamp_fine_B() {
+        return (long)getUIntBEElement(offsetBits_timestamp_fine_B(), 32);
+    }
+
+    /**
+     * Set the value of the field 'timestamp_fine_B'
+     */
+    public void set_timestamp_fine_B(long value) {
+        setUIntBEElement(offsetBits_timestamp_fine_B(), 32, value);
+    }
+
+    /**
+     * Return the size, in bytes, of the field 'timestamp_fine_B'
+     */
+    public static int size_timestamp_fine_B() {
+        return (32 / 8);
+    }
+
+    /**
+     * Return the size, in bits, of the field 'timestamp_fine_B'
+     */
+    public static int sizeBits_timestamp_fine_B() {
+        return 32;
+    }
+
+    /////////////////////////////////////////////////////////
     // Accessor methods for field: coordinate_x_B
     //   Field type: int, unsigned
-    //   Offset (bits): 32
+    //   Offset (bits): 176
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
@@ -252,14 +582,14 @@ public class Result extends net.tinyos.message.Message {
      * Return the offset (in bytes) of the field 'coordinate_x_B'
      */
     public static int offset_coordinate_x_B() {
-        return (32 / 8);
+        return (176 / 8);
     }
 
     /**
      * Return the offset (in bits) of the field 'coordinate_x_B'
      */
     public static int offsetBits_coordinate_x_B() {
-        return 32;
+        return 176;
     }
 
     /**
@@ -293,7 +623,7 @@ public class Result extends net.tinyos.message.Message {
     /////////////////////////////////////////////////////////
     // Accessor methods for field: coordinate_y_B
     //   Field type: int, unsigned
-    //   Offset (bits): 48
+    //   Offset (bits): 192
     //   Size (bits): 16
     /////////////////////////////////////////////////////////
 
@@ -315,14 +645,14 @@ public class Result extends net.tinyos.message.Message {
      * Return the offset (in bytes) of the field 'coordinate_y_B'
      */
     public static int offset_coordinate_y_B() {
-        return (48 / 8);
+        return (192 / 8);
     }
 
     /**
      * Return the offset (in bits) of the field 'coordinate_y_B'
      */
     public static int offsetBits_coordinate_y_B() {
-        return 48;
+        return 192;
     }
 
     /**
