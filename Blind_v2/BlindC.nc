@@ -14,6 +14,7 @@ module BlindC {
 
 	uses interface SplitControl as SerialControl;
 	uses interface AMSend as SerialMsgSend;
+	uses interface AMSend as SerialBeaconRecSend;
 	uses interface Packet as SerialPacket;
 
 	uses interface Timer<TMilli> as CalcPosTimer;
@@ -23,19 +24,15 @@ module BlindC {
 	uses interface LocalTime <TMilli>;
 
 } implementation {
-	//offset pari a 45 
-	uint16_t LUT[80] = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6, 7, 7, 8, 10, 11, 12, 14, 15, 17, 19, 22, 25, 28, 31, 35, 39, 44, 50, 56, 63, 70, 79, 89, 100, 112, 125, 141, 158, 177, 199, 223, 251, 281, 316, 354, 398, 446, 501, 562, 630, 707, 794, 891, 1000, 1122, 1258, 1412, 1584, 1778, 1995, 2238, 2511, 2818, 3162, 3548, 3981, 4466, 5011, 5623, 6309, 7079, 7943, 8912, 10000};
-	uint16_t offsetRSSI = 45;
+	uint32_t LUT[80] = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6, 7, 7, 8, 10, 11, 12, 14, 15, 17, 19, 22, 25, 28, 31, 35, 39, 44, 50, 56, 63, 70, 79, 89, 100, 112, 125, 141, 158, 177, 199, 223, 251, 281, 316, 354, 398, 446, 501, 562, 630, 707, 794, 891, 1000, 1122, 1258, 1412, 1584, 1778, 1995, 2238, 2511, 2818, 3162, 3548, 3981, 4466, 5011, 5623, 6309, 7079, 7943, 8912};
+	//uint32_t LUT[80] = {1, 1, 1, 1, 2, 3, 3, 5, 6, 7, 10, 12, 15, 19, 25, 31, 39, 50, 63, 79, 100, 125, 158, 199, 251, 316, 398, 501, 630, 794, 1000, 1258, 1584, 1995, 2511, 3162, 3981, 5011, 6309, 7943, 10000, 12589, 15848, 19952, 25118, 31622, 39810, 50118, 63095, 79432, 100000, 125892, 158489, 199526, 251188, 316227, 398107, 501187, 630957, 794328, 1000000, 1258925, 1584893, 1995262, 2511886, 3162277, 3981071, 5011872, 6309573, 7943282, 10000000, 12589254, 15848931, 19952623, 25118864, 31622776, 39810717, 50118723, 63095734, 79432823};
+	uint16_t offsetRSSI = 50; //valore minimoRssi in modulo
 	Pos_t posBlindA; //pos_t del blind con algoritmo A
 	Pos_t posBlindB; //pos_t del blind con algoritmo B
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
 	uint16_t step = STEP_SIZE; //step della griglia
-	uint16_t distA[MAX_ANCHOR];
-	uint16_t distBX[MAX_ANCHOR];
-	uint16_t distBY[MAX_ANCHOR];
-	uint16_t qualA[MAX_ANCHOR];
-	uint16_t qualBX[MAX_ANCHOR];
-	uint16_t qualBY[MAX_ANCHOR];
+	uint16_t dist[MAX_ANCHOR];
+	uint32_t qual[MAX_ANCHOR];
 	uint16_t iterAlgo;
 	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
@@ -46,19 +43,18 @@ module BlindC {
 	bool calcPosStarted; //booleana per segnare l'avvio del task per il calcolo della posizione
 
 	message_t serialMsg; //pacchetto di appoggio utilizzato per comunicazione seriale
-
-	nx_struct Result_t resultsToSendQueue[RESULTS_QUEUE_DEPTH]; //coda dei risultati da inviare
-	uint16_t resultsQueueFront, resultsQueueRear; //indice per inserire/estrarre il risultato nella/dalla coda
+	message_t serialMsg2; //pacchetto di appoggio utilizzato per comunicazione seriale
 
 	void init();//inizializza le variabili d'ambiente
-	uint16_t getRssi(message_t *msg); //estrare il valore rssi dal beacon ricevuto
-	void handleBeacon(Beacon_msg* beaconMsg, uint16_t rssi); //invocato ad ogni ricezione di un beacon
-	void addToBuffer(uint8_t idAnchor, uint16_t rssi); //aggiunge al buffer il valore rssi del beacon ricevuto da un ancora
+	int8_t getRssi(message_t *msg); //estrare il valore rssi dal beacon ricevuto
+	void handleBeacon(Beacon_msg* beaconMsg, int8_t rssi); //invocato ad ogni ricezione di un beacon
+	void addToBuffer(uint8_t idAnchor, int8_t rssi); //aggiunge al buffer il valore rssi del beacon ricevuto da un ancora
 	void calcMinMaxGrid(Pos_t posAnchor); //aggiorna gli estremi della griglia in base alle coordinate delle ancore
 	void increaseBufferIndex(uint8_t id); //incrementa o resetta l'indice del buffer rendendolo circolare
 	bool IsBufferReady(); //controllo sul buffer, true se questo è pieno
 	task void calcPosTask(); //calcolo posizione del nodo blind
 	void sendToSerial(Result_t result); //invio pachetto alla seriale
+	void sendBeaconRecToSerial(BeaconRec_t beaconRec); //invio pachetto alla seriale
 	void AlgoA();
 	void AlgoB();
 
@@ -126,13 +122,23 @@ module BlindC {
 	}
 
 	//ottengo il valore rssi del messaggio
-	uint16_t getRssi(message_t *msg){
-		return (uint16_t) call BeaconPacket.getRssi(msg);
+	int8_t getRssi(message_t *msg){
+		return (int8_t) call BeaconPacket.getRssi(msg);
   	}
 
   	//gestione del beacon ricevuto
-  	void handleBeacon(Beacon_msg* beaconMsg, uint16_t rssi){
+  	void handleBeacon(Beacon_msg* beaconMsg, int8_t rssi){
+  		BeaconRec_t beaconRec;//beacon da rigirare alla seriale
   		uint8_t idAnchor = beaconMsg->anchor_id;
+
+  		//invio ala seriale del beacon ricevuto con il timestamp di ricezione
+  		beaconRec.idAnchor = idAnchor;
+		beaconRec.timestamp =  call LocalTime.get();
+		beaconRec.rssi = rssi;
+		beaconRec.coordinate_x = beaconMsg->coordinate_x;
+		beaconRec.coordinate_y = beaconMsg->coordinate_y;
+		sendBeaconRecToSerial(beaconRec);
+
   		idAnchor = idAnchor - 1; //perchè abbiamo considerato che gli id delle ancore siano numerate da 1 a MAX_ANCHOR
 
   		if (!foundedAnchors[idAnchor]){ //aggiungo l'ancora nuova se non l'avevo trovata
@@ -147,6 +153,7 @@ module BlindC {
 		
 			foundedAnchors[idAnchor] = TRUE; //imposto di aver trovato l'ancora con lo specifico id
   		}
+
   		addToBuffer(idAnchor, rssi); //aggiungo il valore rssi del beacon mandato dall'ancora al buffer
 
   		if (!calcPosStarted){ //se il processo di calcolo della pos non è stato ancora avviato
@@ -167,10 +174,11 @@ module BlindC {
   	}
 
   	//aggiorna il buffer degli rssi
-  	void addToBuffer(uint8_t idAnchor, uint16_t rssi){
+  	void addToBuffer(uint8_t idAnchor, int8_t rssi){
   		uint8_t row = idAnchor;
   		uint8_t column = bufferIndex[idAnchor];
-  		buffer[row][column] = rssi;
+  		buffer[row][column] = rssi + offsetRSSI; //aggiungo l'offset
+
   		increaseBufferIndex(idAnchor);
   	}
 
@@ -200,6 +208,8 @@ module BlindC {
 
 	event void SerialMsgSend.sendDone(message_t *m,error_t error){}
 
+	event void SerialBeaconRecSend.sendDone(message_t *m,error_t error){}
+
 	//invio la posizione stimata dall'algoritmo (non funzionante, ovvero perde i messaggi, se richiamato con una frequenza elevata)
 	void sendToSerial(Result_t result){
 		Result_t* resultToSend;
@@ -217,6 +227,20 @@ module BlindC {
 		resultToSend->coordinate_y_B = result.coordinate_y_B;		
 
 		call SerialMsgSend.send(AM_BROADCAST_ADDR, &serialMsg, sizeof(Result_t));
+	}
+
+	void sendBeaconRecToSerial(BeaconRec_t beaconRec){
+		BeaconRec_t* beaconRecToSend;
+
+		beaconRecToSend = (BeaconRec_t*) (call SerialPacket.getPayload(&serialMsg2, sizeof(beaconRecToSend)));
+
+		beaconRecToSend->idAnchor = beaconRec.idAnchor;
+		beaconRecToSend->timestamp = beaconRec.timestamp;
+		beaconRecToSend->rssi = beaconRec.rssi;
+		beaconRecToSend->coordinate_x = beaconRec.coordinate_x;
+		beaconRecToSend->coordinate_y = beaconRec.coordinate_y;
+
+		call SerialBeaconRecSend.send(AM_BROADCAST_ADDR, &serialMsg2, sizeof(BeaconRec_t));
 	}
 
 	//task per il calcolo della posizione del Blind
@@ -250,8 +274,8 @@ module BlindC {
    	//algoritmo con ricerca per ogni punto della griglia
    	void AlgoA(){
 		uint8_t i, j;
-		uint32_t sum = 0, average;
-		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+		uint32_t sum = 0, average = 0;
+		uint16_t xsp, ysp, devstd = 0, min_ds = 65535U; //anche se dovrebbe essere 65535
 
 		/* RSSI Buffer averages */
 		for (i = 0; i < MAX_ANCHOR; i++){
@@ -269,23 +293,23 @@ module BlindC {
 			for (ysp = minY; ysp <= maxY; ysp = ysp + step){
 				/* Pseudo distance (1 + d2) */
 				for (j = 0; j < MAX_ANCHOR; j++){
-					distA[j] = 1 +
+					dist[j] = 1 +
 						(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x) + 
 						(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);						
 				}
 
 				/* Quality function */
 				for (j = 0; j < MAX_ANCHOR; j++) 
-					qualA[j] = LUT[avg_RSSI[j] + offsetRSSI] * distA[j];
+			 		qual[j] = LUT[avg_RSSI[j]] * dist[j];
 
 				average = 0;
 				for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-					average += qualA[j];
+					average += qual[j];
 				average /= MAX_ANCHOR;
 
 				sum = 0;
 				for(j = 0; j < MAX_ANCHOR; j++)
-					sum += (qualA[j] - average) * (qualA[j] - average);
+					sum += (qual[j] - average) * (qual[j] - average);
 				devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
 
 				/* Check for min devstd */
@@ -302,7 +326,7 @@ module BlindC {
    	void AlgoB(){
 		uint8_t i, j;
 		uint32_t sum = 0, average;
-		uint16_t xsp, ysp, devstd = 0, min_ds = 65535;
+		uint16_t xsp, ysp, devstd = 0, min_ds = 65535U;
 
 		/* RSSI Buffer averages */
 		for (i = 0; i < MAX_ANCHOR; i++){
@@ -319,21 +343,21 @@ module BlindC {
 		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
 			/* Pseudo distanceX(1 + d2) */
 			for (j = 0; j < MAX_ANCHOR; j++){
-				distBX[j] = 1 +(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x);
+				dist[j] = 1 + (xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x);
 			}
 
 			/* Quality function */
 			for (j = 0; j < MAX_ANCHOR; j++) 
-				qualBX[j] = LUT[avg_RSSI[j] + offsetRSSI] * distBX[j];
-
+				qual[j] = LUT[avg_RSSI[j]] * dist[j];
+  
 			average = 0;
 			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-				average += qualBX[j];
+				average += qual[j];
 			average /= MAX_ANCHOR;
 
 			sum = 0;
 			for(j = 0; j < MAX_ANCHOR; j++)
-				sum += (qualBX[j] - average) * (qualBX[j] - average);
+				sum += (qual[j] - average) * (qual[j] - average);
 			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
 
 			/* Check for min devstd */
@@ -343,24 +367,27 @@ module BlindC {
 			}	
 		}
 
+		devstd = 0;
+		min_ds = 65535U;
+
 		for (ysp = minY; ysp <= maxY; ysp = ysp + step){
 				/* Pseudo distanceY(1 + d2) */
 			for (j = 0; j < MAX_ANCHOR; j++){
-				distBY[j] = 1 +(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);
+				dist[j] = 1 + (ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);
 			}
 
 			/* Quality function */
 			for (j = 0; j < MAX_ANCHOR; j++) 
-				qualBY[j] = LUT[avg_RSSI[j] + offsetRSSI] * distBY[j];
+				qual[j] = LUT[avg_RSSI[j]] * dist[j];
 
 			average = 0;
 			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-				average += qualBY[j];
+				average += qual[j];
 			average /= MAX_ANCHOR;
 
 			sum = 0;
 			for(j = 0; j < MAX_ANCHOR; j++)
-				sum += (qualBY[j] - average) * (qualBY[j] - average);
+				sum += (qual[j] - average) * (qual[j] - average);
 			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
 
 			/* Check for min devstd */

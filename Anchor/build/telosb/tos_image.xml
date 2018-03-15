@@ -1,13 +1,13 @@
 <tos_image>
   <ident>
-    <platform>telosb</platform>
-    <appname>AnchorAppC</appname>
-    <uidhash>39F6B782L</uidhash>
     <username>cerbero</username>
-    <deluge_support>no</deluge_support>
-    <hostname>flexlm</hostname>
     <userhash>16B5B0FEL</userhash>
-    <timestamp>5AA2DABAL</timestamp>
+    <uidhash>A0C28E5BL</uidhash>
+    <appname>AnchorAppC</appname>
+    <deluge_support>no</deluge_support>
+    <timestamp>5AA7E7DFL</timestamp>
+    <hostname>flexlm</hostname>
+    <platform>telosb</platform>
   </ident>
   <image format="ihex">
 :10400000314000391542200175F335D0085A3F4040

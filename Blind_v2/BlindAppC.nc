@@ -1,6 +1,7 @@
 #include "BeaconMessage.h"
 #include "Pos.h"
 #include "Result.h"
+#include "BeaconRec.h"
 
 configuration BlindAppC {
 } implementation {
@@ -13,6 +14,7 @@ configuration BlindAppC {
 
 	components SerialActiveMessageC as SerialAM;
 	components new SerialAMSenderC(AM_RESULT_T) as SerialMsgSender;
+	components new SerialAMSenderC(AM_BEACONREC_T) as SerialBeaconRecSender;
 
 	components new TimerMilliC() as Timer0;
 	//components new TimerMilliC() as Timer1;
@@ -29,6 +31,7 @@ configuration BlindAppC {
 
   	App.SerialControl -> SerialAM;
   	App.SerialMsgSend -> SerialMsgSender;
+  	App.SerialBeaconRecSend -> SerialBeaconRecSender;
   	App.SerialPacket -> SerialAM;
 
 	App.CalcPosTimer -> Timer0;

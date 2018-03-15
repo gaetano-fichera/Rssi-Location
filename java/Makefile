@@ -9,6 +9,9 @@ Pos.class: Pos.java
 Result.class: Result.java
 	javac $<
 
+BeaconRec.class: BeaconRec.java
+	javac $<
+
 BlindMain.class: BlindMain.java BeaconMessage.java Pos.java
 	javac $^
 
