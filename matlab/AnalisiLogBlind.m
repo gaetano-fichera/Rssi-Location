@@ -27,7 +27,7 @@ posLogCoordinataX = 5;
 posLogCoordinataY = 6;
 
 %% Lettura file Log (si presuppone che i dati non siano incompleti)
-fileID = fopen('LogBlind.txt', 'r');
+fileID = fopen('fileLogs/LogBlind.txt', 'r');
 formatSpecLog = '%d %d %d %d %d';
 sizeLog = [6 Inf];
 Log = fscanf(fileID, formatSpecLog, sizeLog);
