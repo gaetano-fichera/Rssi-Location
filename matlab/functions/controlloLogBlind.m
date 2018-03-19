@@ -1,9 +1,4 @@
-clc;
-clear;
-clear all;
-
-addpath(genpath('functions'))
-
+function  k = controlloLogBlind( folderName, posizioniTest )
 %% Leggo il file di Input e di Output
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -12,7 +7,9 @@ addpath(genpath('functions'))
 %                        %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fileID1 = fopen('fileLogs/4tests_10x10_step_1_uni_18_03_14/LogBlindBeaconRec.txt', 'r');
+pathLogBlindBeaconRec = strcat('fileLogs/',folderName, '/LogBlindBeaconRec.txt');
+
+fileID1 = fopen(pathLogBlindBeaconRec, 'r');
 formatSpecLog = '%d %d %d %d %d';
 sizeLog = [5 Inf];
 LogBlindBeaconRec = fscanf(fileID1, formatSpecLog, sizeLog);
@@ -25,7 +22,9 @@ LogBlindBeaconRec = LogBlindBeaconRec';
 %                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fileID = fopen('fileLogs/4tests_10x10_step_1_uni_18_03_14/LogBlindAlgo.txt', 'r');
+pathLogBlindAlgo = strcat('fileLogs/',folderName, '/LogBlindAlgo.txt');
+
+fileID = fopen(pathLogBlindAlgo, 'r');
 formatSpecLog2 = '%d %d %d %d %d %d';
 sizeLog = [6 Inf];
 LogBlindAlgo = fscanf(fileID, formatSpecLog2, sizeLog);
@@ -42,7 +41,7 @@ LogBlindAlgo = LogBlindAlgo';
 
 z = 1;
 i = 2;
-while LogBlindBeaconRec(i,1) ~= 10 && LogBlindBeaconRec(i,2) ~= 0
+while LogBlindBeaconRec(i,1) ~= posizioniTest(2,1) && LogBlindBeaconRec(i,2) ~= posizioniTest(2,2)
     for j = 1 : 5
             T1BeaconRec(z,j) = LogBlindBeaconRec(i,j);
     end
@@ -58,7 +57,7 @@ end
 
 z = 1;
 i = i + 1;
-while LogBlindBeaconRec(i,1) ~= 10 && LogBlindBeaconRec(i,2) ~= 10
+while LogBlindBeaconRec(i,1) ~= posizioniTest(3,1) && LogBlindBeaconRec(i,2) ~= posizioniTest(3,2)
     for j = 1 : 5
             T2BeaconRec(z,j) = LogBlindBeaconRec(i,j);
     end
@@ -74,7 +73,7 @@ end
 
 z = 1;
 i = i + 1;
-while LogBlindBeaconRec(i,1) ~= 0 && LogBlindBeaconRec(i,2) ~= 10
+while LogBlindBeaconRec(i,1) ~= posizioniTest(4,1) && LogBlindBeaconRec(i,2) ~= posizioniTest(4,2)
     for j = 1 : 5
             T3BeaconRec(z,j) = LogBlindBeaconRec(i,j);
     end
@@ -244,7 +243,7 @@ end
 
 z = 1;
 i = 2;
-while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= 10
+while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= posizioniTest(2,1)
     for j = 1 : 6
         T1BlindAlgo(z,j) = LogBlindAlgo(i,j);
     end
@@ -260,8 +259,7 @@ end
 
 z = 1;
 i = i + 1;
-
-while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= 10
+while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= posizioniTest(3,1)
     for j = 1 : 6
             T2BlindAlgo(z,j) = LogBlindAlgo(i,j);
     end
@@ -277,7 +275,7 @@ end
 
 z = 1;
 i = i + 1;
-while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= 0
+while LogBlindAlgo(i,1) + LogBlindAlgo(i,4) ~= posizioniTest(4,1)
     for j = 1 : 6
             T3BlindAlgo(z,j) = LogBlindAlgo(i,j);
     end
@@ -416,7 +414,6 @@ T2MatlabAlgoB = populateMatlabAlgoB(T2BlindAlgoB, T2A1BeaconRec, T2A2BeaconRec, 
 T3MatlabAlgoA = populateMatlabAlgoA(T3BlindAlgoA, T3A1BeaconRec, T3A2BeaconRec, T3A3BeaconRec, T3A4BeaconRec);
 T3MatlabAlgoB = populateMatlabAlgoB(T3BlindAlgoB, T3A1BeaconRec, T3A2BeaconRec, T3A3BeaconRec, T3A4BeaconRec);
 
-disp('T4 Started');
 T4MatlabAlgoA = populateMatlabAlgoA(T4BlindAlgoA, T4A1BeaconRec, T4A2BeaconRec, T4A3BeaconRec, T4A4BeaconRec);
 T4MatlabAlgoB = populateMatlabAlgoB(T4BlindAlgoB, T4A1BeaconRec, T4A2BeaconRec, T4A3BeaconRec, T4A4BeaconRec);
 
@@ -434,5 +431,37 @@ T3ConfrontoB = populateConfronto(T3MatlabAlgoB, T3BlindAlgoB);
 T4ConfrontoA = populateConfronto(T4MatlabAlgoA, T4BlindAlgoA);
 T4ConfrontoB = populateConfronto(T4MatlabAlgoB, T4BlindAlgoB);
 
-clear T1BlindAlgo T2BlindAlgo T3BlindAlgo T4BlindAlgo posLogIter posLogIdAlgoritmo posLogStatoAlgoritmo posLogTimestamp posLogCoordinataX posLogCoordinataY iterazioni idAlgoritmoA idAlgoritmoB statoInizio statoFine i indexA indexB colonnaCoordinataX colonnaCoordinataY colonnaTimestampFineIter colonnaTimestampInizioIter;
-clear T1A1BeaconRec T1A2BeaconRec T1A3BeaconRec T1A4BeaconRec T1BlindAlgoA T1BlindAlgoB T1MatlabAlgoA T1MatlabAlgoB T2A1BeaconRec T2A2BeaconRec T2A3BeaconRec T2A4BeaconRec T2BlindAlgoA T2BlindAlgoB T2MatlabAlgoA T2MatlabAlgoB T3A1BeaconRec T3A2BeaconRec T3A3BeaconRec T3A4BeaconRec T3BlindAlgoA T3BlindAlgoB T3MatlabAlgoA T3MatlabAlgoB T4A1BeaconRec T4A2BeaconRec T4A3BeaconRec T4A4BeaconRec T4BlindAlgoA T4BlindAlgoB T4MatlabAlgoA T4MatlabAlgoB;
+%clear T1BlindAlgo T2BlindAlgo T3BlindAlgo T4BlindAlgo posLogIter posLogIdAlgoritmo posLogStatoAlgoritmo posLogTimestamp posLogCoordinataX posLogCoordinataY iterazioni idAlgoritmoA idAlgoritmoB statoInizio statoFine i indexA indexB colonnaCoordinataX colonnaCoordinataY colonnaTimestampFineIter colonnaTimestampInizioIter;
+%clear T1A1BeaconRec T1A2BeaconRec T1A3BeaconRec T1A4BeaconRec T1BlindAlgoA T1BlindAlgoB T1MatlabAlgoA T1MatlabAlgoB T2A1BeaconRec T2A2BeaconRec T2A3BeaconRec T2A4BeaconRec T2BlindAlgoA T2BlindAlgoB T2MatlabAlgoA T2MatlabAlgoB T3A1BeaconRec T3A2BeaconRec T3A3BeaconRec T3A4BeaconRec T3BlindAlgoA T3BlindAlgoB T3MatlabAlgoA T3MatlabAlgoB T4A1BeaconRec T4A2BeaconRec T4A3BeaconRec T4A4BeaconRec T4BlindAlgoA T4BlindAlgoB T4MatlabAlgoA T4MatlabAlgoB;
+
+%T1 A e B
+T1ConfrontoA(:, 1) = 1;
+T1ConfrontoA(:, 2) = 1;
+
+T1ConfrontoB(:, 1) = 1;
+T1ConfrontoB(:, 2) = 2;
+
+%T2 A e B
+T2ConfrontoA(:, 1) = 2;
+T2ConfrontoA(:, 2) = 1;
+
+T2ConfrontoB(:, 1) = 2;
+T2ConfrontoB(:, 2) = 2;
+
+%T3 A e B
+T3ConfrontoA(:, 1) = 3;
+T3ConfrontoA(:, 2) = 1;
+
+T3ConfrontoB(:, 1) = 3;
+T3ConfrontoB(:, 2) = 2;
+
+%T4 A e B
+T4ConfrontoA(:, 1) = 4;
+T4ConfrontoA(:, 2) = 1;
+
+T4ConfrontoB(:, 1) = 4;
+T4ConfrontoB(:, 2) = 2;
+k = [ T1ConfrontoA; T1ConfrontoB; T2ConfrontoA; T2ConfrontoB; T3ConfrontoA; T3ConfrontoB; T4ConfrontoA; T4ConfrontoB];
+
+end
+
