@@ -1,12 +1,12 @@
 <tos_image>
   <ident>
-    <uidhash>8FBBC911L</uidhash>
-    <appname>BlindAppC</appname>
-    <timestamp>5AA95A06L</timestamp>
-    <userhash>16B5B0FEL</userhash>
-    <username>cerbero</username>
-    <deluge_support>no</deluge_support>
     <platform>telosb</platform>
+    <uidhash>9DD69605L</uidhash>
+    <deluge_support>no</deluge_support>
+    <username>cerbero</username>
+    <appname>BlindAppC</appname>
+    <userhash>16B5B0FEL</userhash>
+    <timestamp>5AAF8EA8L</timestamp>
     <hostname>flexlm</hostname>
   </ident>
   <image format="ihex">

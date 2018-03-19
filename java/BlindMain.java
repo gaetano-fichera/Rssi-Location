@@ -78,14 +78,14 @@ public class BlindMain implements MessageListener {
 
       System.out.print(resultLogToPrint);
       
-      //printOnFile(fileAlgoLog, logWriter, resultLog);
+      printOnFile(fileAlgoLog, logWriter, resultLog);
 
     }else if (message.amType() == 80) {
       BeaconRec msg = (BeaconRec) message;
-      //String beaconRecString =  msg.get_idAnchor() + " " + msg.get_timestamp() + " " + msg.get_rssi() + " " + msg.get_coordinate_x() + " " + msg.get_coordinate_y() + "\n";
+      String beaconRecString =  msg.get_idAnchor() + " " + msg.get_timestamp() + " " + msg.get_rssi() + " " + msg.get_coordinate_x() + " " + msg.get_coordinate_y() + "\n";
       //System.out.print(beaconRecString);
       
-      //printOnFile(fileBeaconLog, logWriter, beaconRecString);
+      printOnFile(fileBeaconLog, logWriter, beaconRecString);
     }
    
   }
