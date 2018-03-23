@@ -461,7 +461,7 @@ T4ConfrontoA(:, 2) = 1;
 
 T4ConfrontoB(:, 1) = 4;
 T4ConfrontoB(:, 2) = 2;
+
 k = [ T1ConfrontoA; T1ConfrontoB; T2ConfrontoA; T2ConfrontoB; T3ConfrontoA; T3ConfrontoB; T4ConfrontoA; T4ConfrontoB];
 
 end
-
