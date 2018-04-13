@@ -24,14 +24,11 @@ module BlindC {
 	uses interface LocalTime <TMilli>;
 
 } implementation {
-	uint32_t LUT[80] = {1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6, 7, 7, 8, 10, 11, 12, 14, 15, 17, 19, 22, 25, 28, 31, 35, 39, 44, 50, 56, 63, 70, 79, 89, 100, 112, 125, 141, 158, 177, 199, 223, 251, 281, 316, 354, 398, 446, 501, 562, 630, 707, 794, 891, 1000, 1122, 1258, 1412, 1584, 1778, 1995, 2238, 2511, 2818, 3162, 3548, 3981, 4466, 5011, 5623, 6309, 7079, 7943, 8912};
 	uint16_t offsetRSSI = 50; //valore minimo Rssi in modulo
 	Pos_t posBlindA; //pos_t del blind con algoritmo A
 	Pos_t posBlindB; //pos_t del blind con algoritmo B
 	uint8_t minX, maxX, minY, maxY; //min e max delle coordinate della griglia
 	uint16_t step = STEP_SIZE; //step della griglia
-	uint16_t dist[MAX_ANCHOR];
-	uint32_t qual[MAX_ANCHOR];
 	uint16_t iterAlgo;
 	Pos_t posAnchors[MAX_ANCHOR]; //array delle posizioni delle ancore
 	bool foundedAnchors[MAX_ANCHOR]; //array di bool per tenere traccia delle ancore trovate a runtime
@@ -39,7 +36,6 @@ module BlindC {
 	uint16_t buffer[MAX_ANCHOR][BUFFER_DEPTH]; //matrice buffer degli rssi dei messaggi ricevuti dalle ancore
 	uint16_t bufferCopy[MAX_ANCHOR][BUFFER_DEPTH]; //copia buffer
 	bool bufferReady[MAX_ANCHOR]; //ogni elemento diventa 1 quando il relativo buffer è pieno
-	uint32_t avg_RSSI[MAX_ANCHOR]; //array delle medie RSSI rispetto ad ogni ancora
 	bool calcPosStarted; //booleana per segnare l'avvio del task per il calcolo della posizione
 
 	message_t serialMsg; //pacchetto di appoggio utilizzato per comunicazione seriale
@@ -55,8 +51,8 @@ module BlindC {
 	task void calcPosTask(); //calcolo posizione del nodo blind
 	void sendToSerial(Result_t result); //invio pachetto alla seriale
 	void sendBeaconRecToSerial(BeaconRec_t beaconRec); //invio pachetto alla seriale
-	void AlgoA();
-	void AlgoB();
+	void AlgoA(); //Algoritmo di Localizzazione A
+	void AlgoB(); //Algoritmo di Localizzazione B
 
 	event void Boot.booted(){
 		init();
@@ -275,130 +271,11 @@ module BlindC {
 		call Leds.led2Off(); //notifico fine calcolo della posizione
    	}
 
-   	//algoritmo con ricerca per ogni punto della griglia
    	void AlgoA(){
-		uint8_t i, j;
-		uint32_t sum = 0, average = 0;
-		uint16_t xsp, ysp, devstd = 0, min_ds = 65535U; //anche se dovrebbe essere 65535
-
-		/* RSSI Buffer averages */
-		for (i = 0; i < MAX_ANCHOR; i++){
-			average = 0;
-			for (j = 0; j < BUFFER_DEPTH; j++) 
-				average += buffer[i][j];
-			/* NEXT TIME: consider >> x with BUFFER_DEPTH = 2^x */
-			average /= BUFFER_DEPTH;
-			avg_RSSI[i] = average;
-		}
-
-		/* Controllo di ogni posizione della griglia */
-		/* For each supposed position... */
-		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
-			for (ysp = minY; ysp <= maxY; ysp = ysp + step){
-				/* Pseudo distance (1 + d2) */
-				for (j = 0; j < MAX_ANCHOR; j++){
-					dist[j] = 1 +
-						(xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x) + 
-						(ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);						
-				}
-
-				/* Quality function */
-				for (j = 0; j < MAX_ANCHOR; j++) 
-			 		qual[j] = LUT[avg_RSSI[j]] * dist[j];
-
-				average = 0;
-				for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-					average += qual[j];
-				average /= MAX_ANCHOR;
-
-				sum = 0;
-				for(j = 0; j < MAX_ANCHOR; j++)
-					sum += (qual[j] - average) * (qual[j] - average);
-				devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
-
-				/* Check for min devstd */
-				if (devstd < min_ds){
-					min_ds = devstd;
-					posBlindA.coordinate_x = xsp;
-					posBlindA.coordinate_y = ysp;
-				}
-			}
-		}
+		//To Do
    	}
 
-   	//algoritmo con ricerca lungo gli assi della griglia
    	void AlgoB(){
-		uint8_t i, j;
-		uint32_t sum = 0, average;
-		uint16_t xsp, ysp, devstd = 0, min_ds = 65535U;
-
-		/* RSSI Buffer averages */
-		for (i = 0; i < MAX_ANCHOR; i++){
-			average = 0;
-			for (j = 0; j < BUFFER_DEPTH; j++) 
-				average += buffer[i][j];
-			/* NEXT TIME: consider >> x with BUFFER_DEPTH = 2^x */
-			average /= BUFFER_DEPTH;
-			avg_RSSI[i] = average;
-		}
-
-		/* Controllo di ogni posizione della griglia */
-		/* For each supposed position... */
-		for (xsp = minX; xsp <= maxX; xsp = xsp + step){
-			/* Pseudo distanceX(1 + d2) */
-			for (j = 0; j < MAX_ANCHOR; j++){
-				dist[j] = 1 + (xsp - posAnchors[j].coordinate_x) * (xsp - posAnchors[j].coordinate_x);
-			}
-
-			/* Quality function */
-			for (j = 0; j < MAX_ANCHOR; j++) 
-				qual[j] = LUT[avg_RSSI[j]] * dist[j];
-  
-			average = 0;
-			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-				average += qual[j];
-			average /= MAX_ANCHOR;
-
-			sum = 0;
-			for(j = 0; j < MAX_ANCHOR; j++)
-				sum += (qual[j] - average) * (qual[j] - average);
-			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
-
-			/* Check for min devstd */
-			if (devstd < min_ds){
-				min_ds = devstd;
-				posBlindB.coordinate_x = xsp;
-			}	
-		}
-
-		devstd = 0;
-		min_ds = 65535U;
-
-		for (ysp = minY; ysp <= maxY; ysp = ysp + step){
-				/* Pseudo distanceY(1 + d2) */
-			for (j = 0; j < MAX_ANCHOR; j++){
-				dist[j] = 1 + (ysp - posAnchors[j].coordinate_y) * (ysp - posAnchors[j].coordinate_y);
-			}
-
-			/* Quality function */
-			for (j = 0; j < MAX_ANCHOR; j++) 
-				qual[j] = LUT[avg_RSSI[j]] * dist[j];
-
-			average = 0;
-			for (j = 0; j < MAX_ANCHOR; j++) /* NEXT TIME: merge two "for" */
-				average += qual[j];
-			average /= MAX_ANCHOR;
-
-			sum = 0;
-			for(j = 0; j < MAX_ANCHOR; j++)
-				sum += (qual[j] - average) * (qual[j] - average);
-			devstd = sqrtf(sum / MAX_ANCHOR); /* NEXT TIME: avoid sqrt */
-
-			/* Check for min devstd */
-			if (devstd < min_ds){
-				min_ds = devstd;
-				posBlindB.coordinate_y = ysp;
-			}	
-		}
+		//To Do
    	}
 }
